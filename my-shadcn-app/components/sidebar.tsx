@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Users, UserCircle, Target, FileBarChart, LogOut, Menu, X, LayoutDashboard } from "lucide-react"
+import { BarChart3, Users, UserCircle, Target, FileBarChart, LogOut, Menu, X, LayoutDashboard, CarFrontIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -27,6 +27,11 @@ const navItems = [
     title: "Quản lý Khách hàng",
     href: "/customers",
     icon: UserCircle,
+  },
+  {
+    title: "Sản phẩm",
+    href: "/products",
+    icon: CarFrontIcon,
   },
   {
     title: "Chỉ tiêu & Doanh số",

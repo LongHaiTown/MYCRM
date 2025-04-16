@@ -1,146 +1,61 @@
 import { Request, Response } from 'express';
 import Employee from '../models/employee.model';
 
-export const getEmployees = async (req: Request, res: Response) => {
+export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
     const employees = await Employee.findAll();
-    return res.status(200).json({
-      success: true,
-      data: employees,
-    });
+    res.json(employees);
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Error fetching employees',
-      error: error instanceof Error ? error.message : error,
-    });
+    res.status(500).json({ error: 'Error fetching employees' });
   }
 };
 
-export const getEmployeeById = async (req: Request, res: Response) => {
+export const getEmployeeById = async (req: Request, res: Response): Promise<void> => {
   try {
     const employee = await Employee.findByPk(req.params.id);
     if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found',
-      });
+      res.status(404).json({ error: 'Employee not found' });
+      return;
     }
-    return res.status(200).json({
-      success: true,
-      data: employee,
-    });
+    res.json(employee);
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Error fetching employee',
-      error: error instanceof Error ? error.message : error,
-    });
+    res.status(500).json({ error: 'Error fetching employee' });
   }
 };
 
-export const createEmployee = async (req: Request, res: Response) => {
+export const createEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('Request body:', req.body); // Debug log
-
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Request body is empty',
-      });
-    }
-
-    const { name, email, role } = req.body;
-
-    if (!name || !email || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields',
-        required: ['name', 'email', 'role'],
-      });
-    }
-
-    const newEmployee = await Employee.create({ name, email, role });
-    return res.status(201).json({
-      success: true,
-      message: 'Employee created successfully',
-      data: newEmployee,
-    });
-  } catch (error: any) {
-    console.error('Error creating employee:', error); // Debug log
-
-    // Handle Sequelize validation errors
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors: error.errors.map((err: any) => ({
-          field: err.path,
-          message: err.message,
-        })),
-      });
-    }
-
-    // Handle unique constraint errors
-    if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already exists',
-        error: error.message,
-      });
-    }
-
-    return res.status(400).json({
-      success: false,
-      message: 'Error creating employee',
-      error: error.message || error,
-    });
+    const employee = await Employee.create(req.body);
+    res.status(201).json(employee);
+  } catch (error) {
+    res.status(500).json({ error: 'Error creating employee' });
   }
 };
 
-export const updateEmployee = async (req: Request, res: Response) => {
+export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const employee = await Employee.findByPk(req.params.id);
     if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found',
-      });
+      res.status(404).json({ error: 'Employee not found' });
+      return;
     }
     await employee.update(req.body);
-    return res.status(200).json({
-      success: true,
-      message: 'Employee updated successfully',
-      data: employee,
-    });
+    res.json(employee);
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: 'Error updating employee',
-      error: error instanceof Error ? error.message : error,
-    });
+    res.status(500).json({ error: 'Error updating employee' });
   }
 };
 
-export const deleteEmployee = async (req: Request, res: Response) => {
+export const deleteEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const employee = await Employee.findByPk(req.params.id);
     if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found',
-      });
+      res.status(404).json({ error: 'Employee not found' });
+      return;
     }
     await employee.destroy();
-    return res.status(200).json({
-      success: true,
-      message: 'Employee deleted successfully',
-    });
+    res.status(204).send();
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Error deleting employee',
-      error: error instanceof Error ? error.message : error,
-    });
+    res.status(500).json({ error: 'Error deleting employee' });
   }
 };

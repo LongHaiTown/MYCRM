@@ -34,9 +34,5 @@ const Department = sequelize.define('Department', {
 Department.hasMany(Employee, { foreignKey: 'department_id', as: 'employees' });
 Employee.belongsTo(Department, { foreignKey: 'department_id', as: 'department' });
 
-// Only sync this specific model
-Department.sync({ alter: true }).then(() => {
-  console.log('Department table synced');
-});
 
 export default Department;

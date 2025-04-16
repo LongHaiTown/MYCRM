@@ -7,23 +7,21 @@ import {
   deleteEmployee,
 } from '../controllers/employee.controller';
 
-const EmployeeController = require("../controllers/employee.controller");
-
 const router = Router();
 
-// GET /api/employees - Lấy danh sách nhân viên
-router.get('/', EmployeeController.getEmployees);
+// GET /api/employees - Get all employees
+router.get('/', getEmployees);
 
-// GET /api/employees/:id - Lấy nhân viên theo ID
-// router.get('/:id', EmployeeController.);
+// GET /api/employees/:id - Get employee by ID
+router.get('/:id', getEmployeeById);
 
-// // POST /api/employees - Tạo nhân viên mới
-// router.post('/', createEmployee);
+// POST /api/employees - Create new employee
+router.post('/', createEmployee);
 
-// // PUT /api/employees/:id - Cập nhật nhân viên
-// router.put('/:id', updateEmployee);
+// PUT /api/employees/:id - Update employee
+router.put('/:id', updateEmployee);
 
-// // DELETE /api/employees/:id - Xóa nhân viên
-// router.delete('/:id', deleteEmployee);
+// DELETE /api/employees/:id - Delete employee
+router.delete('/:id', deleteEmployee);
 
 export default router;

@@ -1,18 +1,18 @@
 // src/routes/departmentRoutes.ts
-import express from 'express';
+import { Router } from 'express';
 import {
   getAllDepartments,
   createDepartment,
   getDepartmentById,
   updateDepartment,
-  deleteDepartment
+  deleteDepartment,
 } from '../controllers/department.controller';
 
-const router = express.Router();
+const router = Router();
 
 router.get('/', getAllDepartments);
-router.post('/', createDepartment);
 router.get('/:id', getDepartmentById);
+router.post('/', createDepartment);
 router.put('/:id', updateDepartment);
 router.delete('/:id', deleteDepartment);
 
