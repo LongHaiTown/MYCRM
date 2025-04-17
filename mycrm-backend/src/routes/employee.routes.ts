@@ -5,6 +5,7 @@ import {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  getEmployeeWithRole,
 } from '../controllers/employee.controller';
 
 const router = Router();
@@ -14,6 +15,8 @@ router.get('/', getEmployees);
 
 // GET /api/employees/:id - Get employee by ID
 router.get('/:id', getEmployeeById);
+
+router.get('/by-role/manager', getEmployeeWithRole);
 
 // POST /api/employees - Create new employee
 router.post('/', createEmployee);

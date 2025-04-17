@@ -15,6 +15,8 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
+import { useEffect } from "react"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -32,23 +34,45 @@ const formSchema = z.object({
   }),
 })
 
-type AddEmployeeModalProps = {
+type EditEmployeeModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>
+  employee: {
+    id: number
+    name: string
+    phone?: string
+    email: string
+    role: string
+    department_id: number
+  } | null
+  isLoading?: boolean
 }
 
-export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEmployeeModalProps) {
+export default function EditEmployeeModal({ open, onOpenChange, onSubmit, employee, isLoading = false }: EditEmployeeModalProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      phone: "",
-      email: "",
-      role: "",
-      department: "",
+      name: employee?.name || "",
+      phone: employee?.phone || "",
+      email: employee?.email || "",
+      role: employee?.role || "",
+      department: employee?.department_id?.toString() || "",
     },
   })
+
+  // Reset form when employee changes
+  useEffect(() => {
+    if (employee) {
+      form.reset({
+        name: employee.name,
+        phone: employee.phone || "",
+        email: employee.email,
+        role: employee.role,
+        department: employee.department_id?.toString() || "",
+      })
+    }
+  }, [employee, form])
 
   async function handleSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -63,8 +87,8 @@ export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEm
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Thêm nhân viên mới</DialogTitle>
-          <DialogDescription>Nhập thông tin nhân viên mới vào form bên dưới</DialogDescription>
+          <DialogTitle>Chỉnh sửa thông tin nhân viên</DialogTitle>
+          <DialogDescription>Chỉnh sửa thông tin nhân viên trong form bên dưới</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -76,7 +100,7 @@ export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEm
                 <FormItem>
                   <FormLabel>Họ và tên</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nguyễn Văn A" {...field} />
+                    <Input placeholder="Nguyễn Văn A" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -90,7 +114,7 @@ export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEm
                 <FormItem>
                   <FormLabel>Số điện thoại</FormLabel>
                   <FormControl>
-                    <Input placeholder="0123456789" {...field} />
+                    <Input placeholder="0123456789" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -104,7 +128,7 @@ export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEm
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="example@vinfast.vn" {...field} />
+                    <Input placeholder="example@vinfast.vn" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -117,7 +141,7 @@ export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEm
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Vai trò</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn vai trò" />
@@ -140,7 +164,7 @@ export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEm
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Phòng ban</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn phòng ban" />
@@ -158,11 +182,20 @@ export default function AddEmployeeModal({ open, onOpenChange, onSubmit }: AddEm
             />
 
             <DialogFooter>
-              <Button type="submit">Tạo mới</Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang tải...
+                  </>
+                ) : (
+                  'Cập nhật'
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
   )
-}
+} 

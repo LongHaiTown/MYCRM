@@ -15,6 +15,9 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Department } from "@/services/department.service"
+import { getManagers } from "@/services/employee.service"
+import { useEffect, useState } from "react"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -31,12 +34,34 @@ const formSchema = z.object({
   }),
 })
 
-type AddDepartmentModalProps = {
+interface AddDepartmentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSubmit: (formData: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
 }
 
-export default function AddDepartmentModal({ open, onOpenChange }: AddDepartmentModalProps) {
+export default function AddDepartmentModal({ open, onOpenChange, onSubmit }: AddDepartmentModalProps) {
+  const [managers, setManagers] = useState<{ id: number; name: string }[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchManagers = async () => {
+      try {
+        setIsLoading(true)
+        const data = await getManagers()
+        setManagers(data)
+      } catch (error) {
+        console.error('Error fetching managers:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (open) {
+      fetchManagers()
+    }
+  }, [open])
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -46,8 +71,20 @@ export default function AddDepartmentModal({ open, onOpenChange }: AddDepartment
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
+  function onSubmitForm(values: z.infer<typeof formSchema>) {
+    const selectedManager = managers.find(m => m.id.toString() === values.manager)
+    const departmentData: Omit<Department, 'id' | 'created_at' | 'updated_at'> = {
+      name: values.name,
+      code: values.code,
+      manager: selectedManager?.name || "",
+      managerAvatar: selectedManager?.name.substring(0, 3).toUpperCase() || "",
+      employeeCount: 0,
+      targetAmount: parseFloat(values.targetAmount),
+      currentAmount: 0,
+      progress: 0
+    }
+    
+    onSubmit(departmentData)
     onOpenChange(false)
     form.reset()
   }
@@ -61,7 +98,7 @@ export default function AddDepartmentModal({ open, onOpenChange }: AddDepartment
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -96,17 +133,18 @@ export default function AddDepartmentModal({ open, onOpenChange }: AddDepartment
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Trưởng phòng</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Chọn trưởng phòng" />
+                        <SelectValue placeholder={isLoading ? "Đang tải..." : "Chọn trưởng phòng"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="1">Nguyễn Văn A</SelectItem>
-                      <SelectItem value="2">Trần Thị B</SelectItem>
-                      <SelectItem value="3">Lê Văn C</SelectItem>
-                      <SelectItem value="4">Phạm Thị D</SelectItem>
+                      {managers.map((manager) => (
+                        <SelectItem key={manager.id} value={manager.id.toString()}>
+                          {manager.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

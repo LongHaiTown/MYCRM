@@ -18,7 +18,7 @@ const startServer = async () => {
     console.log('✅ Database connected');
 
     // Tạo bảng nếu chưa có (và cập nhật nếu thay đổi model)
-    await sequelize.sync({ force: true }); // Tạo lại toàn bộ bảng
+    await sequelize.sync({ alter: true }); 
     console.log('✅ Database synchronized');
 
     // Seed dữ liệu mẫu

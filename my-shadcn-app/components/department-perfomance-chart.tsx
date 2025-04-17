@@ -1,6 +1,11 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Department } from "@/services/department.service"
+
+interface DepartmentPerformanceChartProps {
+  departments: Department[]
+}
 
 const data = [
   {
@@ -25,7 +30,7 @@ const data = [
   },
 ]
 
-export default function DepartmentPerformanceChart() {
+export default function DepartmentPerformanceChart({ departments }: DepartmentPerformanceChartProps) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>

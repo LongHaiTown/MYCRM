@@ -16,6 +16,17 @@ const Employee = sequelize.define('Employee', {
       len: { args: [2, 50], msg: 'Name must be between 2 and 50 characters' },
     },
   },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      len: { args: [9, 15], msg: 'Phone must be between 9 and 15 characters' },
+      is: {
+        args: /^[0-9+\-\s]+$/i,
+        msg: 'Invalid phone number format',
+      },
+    },
+  },  
   email: {
     type: DataTypes.STRING,
     allowNull: false,

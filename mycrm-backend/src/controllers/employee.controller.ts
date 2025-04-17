@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Employee from '../models/employee.model';
+import { Op } from 'sequelize';
 
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -57,5 +58,23 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Error deleting employee' });
+  }
+  
+};
+
+export const getEmployeeWithRole = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const managers = await Employee.findAll({
+      where: {
+        role: {
+          [Op.eq]: 'Manager'
+        }
+      }
+    });
+
+    res.json(managers);
+  } catch (error) {
+    console.error('Error fetching managers:', error);
+    res.status(500).json({ error: 'Error fetching employees with role manager' });
   }
 };
