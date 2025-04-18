@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,133 +12,83 @@ import AddProductModal from "@/components/add-product-modal"
 import EditProductModal from "@/components/edit-product-modal"
 import DeleteProductDialog from "@/components/delete-product-dialog"
 import ProductCard from "@/components/product-card"
-
-export type Product = {
-  id: number
-  model_name: string
-  listed_price: number
-  selling_price: number
-  colors: string[]
-  image: string
-  category: string
-  year: number
-}
-
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    model_name: "VF 8 Eco",
-    listed_price: 1260000000,
-    selling_price: 1180000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám"],
-    image: "/placeholder.svg?height=200&width=300&text=VF8",
-    category: "SUV",
-    year: 2023,
-  },
-  {
-    id: 2,
-    model_name: "VF 8 Plus",
-    listed_price: 1470000000,
-    selling_price: 1380000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám", "Đỏ"],
-    image: "/placeholder.svg?height=200&width=300&text=VF8+",
-    category: "SUV",
-    year: 2023,
-  },
-  {
-    id: 3,
-    model_name: "VF 9 Eco",
-    listed_price: 1890000000,
-    selling_price: 1790000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám"],
-    image: "/placeholder.svg?height=200&width=300&text=VF9",
-    category: "SUV",
-    year: 2023,
-  },
-  {
-    id: 4,
-    model_name: "VF 9 Plus",
-    listed_price: 2090000000,
-    selling_price: 1980000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám", "Đỏ"],
-    image: "/placeholder.svg?height=200&width=300&text=VF9+",
-    category: "SUV",
-    year: 2023,
-  },
-  {
-    id: 5,
-    model_name: "VF 5 Plus",
-    listed_price: 458000000,
-    selling_price: 438000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám", "Đỏ"],
-    image: "/placeholder.svg?height=200&width=300&text=VF5+",
-    category: "SUV",
-    year: 2023,
-  },
-  {
-    id: 6,
-    model_name: "VF 6 Eco",
-    listed_price: 675000000,
-    selling_price: 645000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám"],
-    image: "/placeholder.svg?height=200&width=300&text=VF6",
-    category: "SUV",
-    year: 2023,
-  },
-  {
-    id: 7,
-    model_name: "VF 6 Plus",
-    listed_price: 765000000,
-    selling_price: 735000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám", "Đỏ"],
-    image: "/placeholder.svg?height=200&width=300&text=VF6+",
-    category: "SUV",
-    year: 2023,
-  },
-  {
-    id: 8,
-    model_name: "VF 7 Eco",
-    listed_price: 850000000,
-    selling_price: 820000000,
-    colors: ["Đen", "Trắng", "Xanh", "Xám"],
-    image: "/placeholder.svg?height=200&width=300&text=VF7",
-    category: "SUV",
-    year: 2023,
-  },
-]
+import { productService, Product } from "@/services/product.service"
+import { toast } from "sonner"
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const data = await productService.getAll()
+      setProducts(data)
+    } catch (error) {
+      setError("Failed to fetch products")
+      toast.error("Failed to fetch products")
+      console.error("Error fetching products:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
   }
 
-  const filteredProducts = products.filter((product) =>
-    product.model_name.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filteredProducts = products.filter((product) => {
+    if (!product || !product.name) return false
+    return product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
-  const handleAddProduct = (newProduct: Omit<Product, "id" | "image">) => {
-    const id = Math.max(0, ...products.map((p) => p.id)) + 1
-    const image = `/placeholder.svg?height=200&width=300&text=${newProduct.model_name.replace(/\s+/g, "")}`
-
-    setProducts([...products, { ...newProduct, id, image }])
+  const handleAddProduct = async (newProduct: Omit<Product, "id">) => {
+    try {
+      const product = await productService.create(newProduct)
+      setProducts([...products, product])
+      toast.success("Product added successfully")
+    } catch (error) {
+      toast.error("Failed to add product")
+      console.error("Error adding product:", error)
+    }
   }
 
-  const handleEditProduct = (updatedProduct: Product) => {
-    setProducts(products.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)))
-    setIsEditModalOpen(false)
-    setSelectedProduct(null)
+  const handleEditProduct = async (updatedProduct: Product) => {
+    try {
+      const product = await productService.update(updatedProduct.id, updatedProduct)
+      setProducts(products.map((p) => (p.id === product.id ? product : p)))
+      toast.success("Product updated successfully")
+    } catch (error) {
+      toast.error("Failed to update product")
+      console.error("Error updating product:", error)
+    } finally {
+      setIsEditModalOpen(false)
+      setSelectedProduct(null)
+    }
   }
 
-  const handleDeleteProduct = () => {
-    if (selectedProduct) {
+  const handleDeleteProduct = async () => {
+    if (!selectedProduct) return
+
+    try {
+      await productService.delete(selectedProduct.id)
       setProducts(products.filter((p) => p.id !== selectedProduct.id))
+      toast.success("Product deleted successfully")
+    } catch (error) {
+      toast.error("Failed to delete product")
+      console.error("Error deleting product:", error)
+    } finally {
       setIsDeleteDialogOpen(false)
       setSelectedProduct(null)
     }
@@ -152,6 +102,19 @@ export default function ProductsPage() {
   const openDeleteDialog = (product: Product) => {
     setSelectedProduct(product)
     setIsDeleteDialogOpen(true)
+  }
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen space-y-4">
+        <p className="text-red-500">{error}</p>
+        <Button onClick={fetchProducts}>Retry</Button>
+      </div>
+    )
   }
 
   return (
@@ -208,11 +171,12 @@ export default function ProductsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Mẫu xe</TableHead>
+                    <TableHead>Tên sản phẩm</TableHead>
                     <TableHead>Giá niêm yết</TableHead>
                     <TableHead>Giá bán</TableHead>
                     <TableHead>Màu sắc</TableHead>
-                    <TableHead>Danh mục</TableHead>
+                    <TableHead>Loại</TableHead>
+                    <TableHead>Trạng thái</TableHead>
                     <TableHead>Năm</TableHead>
                     <TableHead className="text-right">Hành động</TableHead>
                   </TableRow>
@@ -220,9 +184,9 @@ export default function ProductsPage() {
                 <TableBody>
                   {filteredProducts.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.model_name}</TableCell>
-                      <TableCell>{formatCurrency(product.listed_price)}</TableCell>
-                      <TableCell>{formatCurrency(product.selling_price)}</TableCell>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell>{formatCurrency(product.listedPrice)}</TableCell>
+                      <TableCell>{formatCurrency(product.salePrice)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {product.colors.map((color) => (
@@ -232,7 +196,14 @@ export default function ProductsPage() {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell>{product.category}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{product.type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={product.status === 'available' ? 'default' : 'destructive'}>
+                          {product.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{product.year}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -255,7 +226,11 @@ export default function ProductsPage() {
         </TabsContent>
       </Tabs>
 
-      <AddProductModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} onAddProduct={handleAddProduct} />
+      <AddProductModal 
+        open={isAddModalOpen} 
+        onOpenChange={setIsAddModalOpen} 
+        onAddProduct={(product) => handleAddProduct(product as Omit<Product, "id">)} 
+      />
 
       {selectedProduct && (
         <EditProductModal

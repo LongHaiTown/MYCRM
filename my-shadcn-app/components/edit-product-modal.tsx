@@ -16,28 +16,36 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useEffect } from "react"
-import type { Product } from "@/app/products/page"
+import { Product, productService } from "@/services/product.service"
+import { uploadService } from "@/services/upload.service"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { ImagePlus, X } from "lucide-react"
 
 const formSchema = z.object({
-  model_name: z.string().min(2, {
-    message: "Tên mẫu xe phải có ít nhất 2 ký tự",
+  name: z.string().min(2, {
+    message: "Tên sản phẩm phải có ít nhất 2 ký tự",
   }),
-  listed_price: z.string().min(1, {
+  listedPrice: z.string().min(1, {
     message: "Vui lòng nhập giá niêm yết",
   }),
-  selling_price: z.string().min(1, {
+  salePrice: z.string().min(1, {
     message: "Vui lòng nhập giá bán",
   }),
   colors: z.array(z.string()).min(1, {
     message: "Vui lòng chọn ít nhất một màu sắc",
   }),
-  category: z.string({
-    required_error: "Vui lòng chọn danh mục",
+  type: z.enum(['electric-sedan', 'electric-SUV', 'bike', 'truck'], {
+    required_error: "Vui lòng chọn loại sản phẩm",
+  }),
+  status: z.enum(['available', 'discontinued'], {
+    required_error: "Vui lòng chọn trạng thái",
   }),
   year: z.string({
     required_error: "Vui lòng chọn năm sản xuất",
   }),
+  description: z.string().optional(),
+  images: z.array(z.string()).optional(),
 })
 
 type EditProductModalProps = {
@@ -56,42 +64,133 @@ const colorOptions = [
 ]
 
 export default function EditProductModal({ open, onOpenChange, product, onEditProduct }: EditProductModalProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      model_name: product.model_name,
-      listed_price: product.listed_price.toString(),
-      selling_price: product.selling_price.toString(),
-      colors: product.colors,
-      category: product.category,
-      year: product.year.toString(),
+      name: "",
+      listedPrice: "",
+      salePrice: "",
+      colors: [],
+      status: "available",
+      description: "",
+      images: [],
     },
   })
 
-  // Update form when product changes
   useEffect(() => {
-    form.reset({
-      model_name: product.model_name,
-      listed_price: product.listed_price.toString(),
-      selling_price: product.selling_price.toString(),
-      colors: product.colors,
-      category: product.category,
-      year: product.year.toString(),
-    })
-  }, [product, form])
+    const fetchProduct = async () => {
+      try {
+        setIsLoading(true)
+        const data = await productService.getById(product.id)
+        setCurrentProduct(data)
+        
+        // Set form values
+        form.reset({
+          name: data.name,
+          listedPrice: data.listedPrice.toString(),
+          salePrice: data.salePrice.toString(),
+          colors: data.colors,
+          type: data.type,
+          status: data.status,
+          year: data.year.toString(),
+          description: data.description || "",
+          images: data.images || [],
+        })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const updatedProduct: Product = {
-      ...product,
-      model_name: values.model_name,
-      listed_price: Number.parseFloat(values.listed_price),
-      selling_price: Number.parseFloat(values.selling_price),
-      colors: values.colors,
-      category: values.category,
-      year: Number.parseInt(values.year),
+        // Set preview images
+        if (data.images && data.images.length > 0) {
+          setPreviewImages(data.images)
+        }
+      } catch (error) {
+        toast.error("Failed to fetch product details")
+        console.error("Error fetching product:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    onEditProduct(updatedProduct)
+    if (open && product.id) {
+      fetchProduct()
+    }
+  }, [open, product.id, form])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 5) {
+      toast.error("Bạn chỉ có thể tải lên tối đa 5 ảnh")
+      return
+    }
+
+    setSelectedFiles(files)
+    const previews = files.map(file => URL.createObjectURL(file))
+    setPreviewImages([...previewImages, ...previews])
+  }
+
+  const removeImage = (index: number) => {
+    const newPreviews = [...previewImages]
+    newPreviews.splice(index, 1)
+    setPreviewImages(newPreviews)
+
+    // If it's a newly selected file, remove it from selectedFiles
+    if (index >= (previewImages.length - selectedFiles.length)) {
+      const newFiles = [...selectedFiles]
+      newFiles.splice(index - (previewImages.length - selectedFiles.length), 1)
+      setSelectedFiles(newFiles)
+    }
+  }
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!currentProduct) return
+
+    try {
+      setIsUploading(true)
+      let imagePaths: string[] = [...(currentProduct.images || [])]
+
+      if (selectedFiles.length > 0) {
+        const newImagePaths = await uploadService.uploadImages(selectedFiles)
+        imagePaths = [...imagePaths, ...newImagePaths]
+      }
+
+      const updatedProduct = {
+        ...currentProduct,
+        name: values.name,
+        listedPrice: Number.parseFloat(values.listedPrice),
+        salePrice: Number.parseFloat(values.salePrice),
+        colors: values.colors,
+        type: values.type,
+        status: values.status,
+        year: Number.parseInt(values.year),
+        description: values.description,
+        images: imagePaths,
+      }
+
+      onEditProduct(updatedProduct)
+      onOpenChange(false)
+      setSelectedFiles([])
+    } catch (error) {
+      toast.error("Lỗi khi tải lên ảnh")
+      console.error("Error uploading images:", error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <div className="flex items-center justify-center h-40">
+            <p>Loading product details...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   return (
@@ -99,19 +198,19 @@ export default function EditProductModal({ open, onOpenChange, product, onEditPr
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Chỉnh sửa sản phẩm</DialogTitle>
-          <DialogDescription>Cập nhật thông tin sản phẩm</DialogDescription>
+          <DialogDescription>Chỉnh sửa thông tin sản phẩm trong form bên dưới</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="model_name"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tên mẫu xe</FormLabel>
+                  <FormLabel>Tên sản phẩm</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input placeholder="VF 8 Eco" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -121,12 +220,12 @@ export default function EditProductModal({ open, onOpenChange, product, onEditPr
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="listed_price"
+                name="listedPrice"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Giá niêm yết (VNĐ)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="1260000000" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -135,12 +234,12 @@ export default function EditProductModal({ open, onOpenChange, product, onEditPr
 
               <FormField
                 control={form.control}
-                name="selling_price"
+                name="salePrice"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Giá bán (VNĐ)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="1180000000" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -190,20 +289,21 @@ export default function EditProductModal({ open, onOpenChange, product, onEditPr
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="category"
+                name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Danh mục</FormLabel>
+                    <FormLabel>Loại sản phẩm</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Chọn danh mục" />
+                          <SelectValue placeholder="Chọn loại" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="SUV">SUV</SelectItem>
-                        <SelectItem value="Sedan">Sedan</SelectItem>
-                        <SelectItem value="Hatchback">Hatchback</SelectItem>
+                        <SelectItem value="electric-sedan">Sedan điện</SelectItem>
+                        <SelectItem value="electric-SUV">SUV điện</SelectItem>
+                        <SelectItem value="bike">Xe máy</SelectItem>
+                        <SelectItem value="truck">Xe tải</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -213,19 +313,19 @@ export default function EditProductModal({ open, onOpenChange, product, onEditPr
 
               <FormField
                 control={form.control}
-                name="year"
+                name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Năm sản xuất</FormLabel>
+                    <FormLabel>Trạng thái</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Chọn năm" />
+                          <SelectValue placeholder="Chọn trạng thái" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="2023">2023</SelectItem>
-                        <SelectItem value="2024">2024</SelectItem>
+                        <SelectItem value="available">Có sẵn</SelectItem>
+                        <SelectItem value="discontinued">Ngừng sản xuất</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -234,8 +334,93 @@ export default function EditProductModal({ open, onOpenChange, product, onEditPr
               />
             </div>
 
+            <FormField
+              control={form.control}
+              name="year"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Năm sản xuất</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn năm" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="2023">2023</SelectItem>
+                      <SelectItem value="2024">2024</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mô tả</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nhập mô tả sản phẩm" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="space-y-2">
+              <FormLabel>Hình ảnh sản phẩm</FormLabel>
+              <div className="flex flex-wrap gap-2">
+                {previewImages.length === 0 ? (
+                  <div className="w-full h-32 border-2 border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground">
+                    <ImagePlus className="h-8 w-8 mb-2" />
+                    <p>Chưa có hình ảnh</p>
+                    <p className="text-sm">Nhấp để tải lên</p>
+                  </div>
+                ) : (
+                  previewImages.map((preview, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={preview}
+                        alt={`Preview image ${index + 1} for ${form.getValues("name") || "product"}`}
+                        className="w-20 h-20 object-cover rounded-md"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+                {previewImages.length < 5 && (
+                  <label className="w-20 h-20 border-2 border-dashed rounded-md flex items-center justify-center cursor-pointer hover:bg-accent">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                    <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                  </label>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Tối đa 5 ảnh. Kích thước tối đa mỗi ảnh: 5MB
+              </p>
+            </div>
+
             <DialogFooter>
-              <Button type="submit">Lưu thay đổi</Button>
+              <Button type="submit" disabled={isUploading}>
+                {isUploading ? "Đang tải lên..." : "Cập nhật sản phẩm"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

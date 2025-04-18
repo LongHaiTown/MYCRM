@@ -1,7 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db';
 
-
 const Product = sequelize.define('Product', {
   id: {
     type: DataTypes.INTEGER.UNSIGNED,
@@ -50,6 +49,27 @@ const Product = sequelize.define('Product', {
       },
     },
   },
+
+  // 🔥 Thêm trường `year`
+  year: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    validate: {
+      isInt: { msg: 'Year must be an integer' },
+      min: { args: [2000], msg: 'Year must be after 2000' }, // tùy bạn
+    },
+  },
+
+  // 🔥 Thêm trường `type`
+  type: {
+    type: DataTypes.ENUM('electric-sedan', 'electric-SUV', 'bike', 'truck'),
+    defaultValue: 'electric-sedan',
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'Type is required' },
+    },
+  },
+
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
